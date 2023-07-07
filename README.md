@@ -116,6 +116,8 @@ python train.py --data ./data/roco/ViT-B_32_train.pkl --out_dir "./roco_train/" 
 Train only transformer mapping network:
 ```
 python train.py --only_prefix --data ./data/roco/ViT-B_32_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 32 --pretrained_weights_path ""
+(background running)
+nohup python train.py > output.txt 2>&1 &
 ```
 
 **If you wish to use ResNet-based CLIP:** 
