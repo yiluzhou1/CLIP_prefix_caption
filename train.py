@@ -257,15 +257,19 @@ class ClipCaptionPrefix(ClipCaptionModel):
         self.gpt.eval()
         return self
 
+def default_method(obj):
+    if isinstance(obj, MappingType):  # Assuming MappingType is your custom type
+        # Provide your own method to convert obj into a JSON-serializable format
+        return obj.value
+    raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
 
-def save_config(args: argparse.Namespace):
+def save_config(args: argparse.Namespace, output_dir: str):
     config = {}
     for key, item in args._get_kwargs():
         config[key] = item
-    out_path = os.path.join(args.out_dir, f"{args.prefix}.json")
+    out_path = os.path.join(output_dir, f"{args.prefix}.json")
     with open(out_path, 'w') as outfile:
-        json.dump(config, outfile)
-
+        json.dump(config, outfile, default=default_method)
 
 def load_model(config_path: str, epoch_or_latest: Union[str, int] = '_latest'):
     with open(config_path) as f:
@@ -287,6 +291,14 @@ def load_model(config_path: str, epoch_or_latest: Union[str, int] = '_latest'):
         print(f"{model_path} is not exist")
     return model, parser
 
+def get_next_folder_path(base_folder):
+    i = 1
+    while True:
+        next_folder = os.path.join(base_folder, f'{i:03}')
+        if not os.path.exists(next_folder):
+            os.makedirs(next_folder)
+            return next_folder
+        i += 1
 
 def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
           lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = ""):
@@ -294,16 +306,17 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     device = torch.device('cuda:0')
     batch_size = args.bs
     epochs = args.epochs
+    output_dir = get_next_folder_path(output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     model = model.to(device)
     model.train()
-    optimizer = AdamW(model.parameters(), lr=lr)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader)
     )
-    # save_config(args)
+    save_config(args, output_dir)
     for epoch in range(epochs):
         print(f">>> Training epoch {epoch}")
         sys.stdout.flush()
@@ -336,9 +349,9 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', default='./data/coco/oscar_split_train.pkl')
+    parser.add_argument('--data', default='./data/roco/ViT-B_32_train.pkl')
     parser.add_argument('--out_dir', default='./checkpoints')
-    parser.add_argument('--prefix', default='coco_prefix', help='prefix for saved filenames')
+    parser.add_argument('--prefix', default='roco_prefix', help='prefix for saved filenames')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--save_every', type=int, default=1)
     parser.add_argument('--prefix_length', type=int, default=10)
