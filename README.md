@@ -102,33 +102,29 @@ conda env create -f environment.yml
 conda activate clip_prefix_caption
 ```
 
-## COCO training
+## ROCO training
 
-Download [train_captions](https://drive.google.com/file/d/1D3EzUK1d1lNhD2hAvRiKPThidiVbP2K_/view?usp=sharing) to `data/coco/annotations`.
-
-Download [training images](http://images.cocodataset.org/zips/train2014.zip) and [validation images](http://images.cocodataset.org/zips/val2014.zip) and unzip (We use Karpathy et el. split).
-
-Extract CLIP features using (output is `data/coco/oscar_split_ViT-B_32_train.pkl`):
+Extract CLIP features using (output is `data/roco/oscar_split_ViT-B_32_train.pkl`):
 ```
-python parse_coco.py --clip_model_type ViT-B/32
+python parse_roco.py --clip_model_type ViT-B/32
 ```
 Train with fine-tuning of GPT2:
 ```
-python train.py --data ./data/coco/oscar_split_ViT-B_32_train.pkl --out_dir ./coco_train/
+python train.py --data ./data/roco/oscar_split_ViT-B_32_train.pkl --out_dir ./roco_train/
 ```
 
 Train only transformer mapping network:
 ```
-python train.py --only_prefix --data ./data/coco/oscar_split_ViT-B_32_train.pkl --out_dir ./coco_train/ --mapping_type transformer  --num_layres 8 --prefix_length 40 --prefix_length_clip 40
+python train.py --only_prefix --data ./data/roco/ViT-B_32_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layres 8 --prefix_length 40 --prefix_length_clip 40
 ```
 
 **If you wish to use ResNet-based CLIP:** 
 
 ```
-python parse_coco.py --clip_model_type RN50x4
+python parse_roco.py --clip_model_type RN50x4
 ```
 ```
-python train.py --only_prefix --data ./data/coco/oscar_split_RN50x4_train.pkl --out_dir ./coco_train/ --mapping_type transformer  --num_layres 8 --prefix_length 40 --prefix_length_clip 40 --is_rn
+python train.py --only_prefix --data ./data/roco/RN50x4_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layres 8 --prefix_length 40 --prefix_length_clip 40 --is_rn
 ```
 
 ## Conceptual training
