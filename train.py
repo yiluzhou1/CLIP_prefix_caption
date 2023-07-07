@@ -306,10 +306,16 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     device = torch.device('cuda:0')
     batch_size = args.bs
     epochs = args.epochs
+    pretrained_weights_path = args.pretrained_weights_path
     output_dir = get_next_folder_path(output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     model = model.to(device)
+
+    if pretrained_weights_path != '':
+        # Load the pretrained weights
+        model.load_state_dict(torch.load(pretrained_weights_path))
+
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
@@ -362,6 +368,8 @@ def main():
     parser.add_argument('--num_layers', type=int, default=8)
     parser.add_argument('--is_rn', dest='is_rn', action='store_true')
     parser.add_argument('--normalize_prefix', dest='normalize_prefix', action='store_true')
+    parser.add_argument('--pretrained_weights_path', type=str, default='')
+    
     args = parser.parse_args()
     prefix_length = args.prefix_length
     dataset = ClipCocoDataset(args.data, prefix_length, normalize_prefix=args.normalize_prefix)

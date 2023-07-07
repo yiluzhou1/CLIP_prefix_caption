@@ -110,12 +110,12 @@ python parse_roco.py --clip_model_type ViT-B/32
 ```
 Train with fine-tuning of GPT2:
 ```
-python train.py --data ./data/roco/ViT-B_32_train.pkl --out_dir ./roco_train/
+python train.py --data ./data/roco/ViT-B_32_train.pkl --out_dir "./roco_train/" --epochs 10 --bs 32 --pretrained_weights_path ""
 ```
 
 Train only transformer mapping network:
 ```
-python train.py --only_prefix --data ./data/roco/ViT-B_32_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 32
+python train.py --only_prefix --data ./data/roco/ViT-B_32_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 32 --pretrained_weights_path ""
 ```
 
 **If you wish to use ResNet-based CLIP:** 
@@ -124,7 +124,7 @@ python train.py --only_prefix --data ./data/roco/ViT-B_32_train.pkl --out_dir ./
 python parse_roco.py --clip_model_type RN50x4
 ```
 ```
-python train.py --only_prefix --data ./data/roco/RN50x4_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --is_rn
+python train.py --only_prefix --data ./data/roco/RN50x4_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --is_rn --epochs 10 --bs 32 --pretrained_weights_path ""
 ```
 
 ## Conceptual training
