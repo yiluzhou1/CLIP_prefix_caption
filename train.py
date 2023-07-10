@@ -11,6 +11,7 @@ import sys
 import argparse
 import json
 from typing import Tuple, Optional, Union
+from torch.utils.tensorboard import SummaryWriter
 
 
 class MappingType(Enum):
@@ -323,6 +324,10 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader)
     )
     save_config(args, output_dir)
+    
+    # create a SummaryWriter object
+    writer = SummaryWriter(output_dir)
+    
     for epoch in range(epochs):
         print(f">>> Training epoch {epoch}")
         sys.stdout.flush()
@@ -344,12 +349,18 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
                     model.state_dict(),
                     os.path.join(output_dir, f"{output_prefix}_latest.pt"),
                 )
+            # log the losses
+            writer.add_scalar('Loss/train', loss, epoch)
         progress.close()
         if epoch % args.save_every == 0 or epoch == epochs - 1:
             torch.save(
                 model.state_dict(),
                 os.path.join(output_dir, f"{output_prefix}-{epoch:03d}.pt"),
             )
+
+    # close the writer
+    writer.close()
+
     return model
 
 

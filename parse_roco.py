@@ -73,7 +73,7 @@ def generate_json_file (clip_model_type: str, dataset_dir: str, input_text_name:
                 data_list.append(data)
 
         # Write the data to the JSON file
-        json_file.write(json.dumps(data_list), indent=4)
+        json_file.write(json.dumps(data_list))
     
     return json_path
 
@@ -87,14 +87,14 @@ def main(clip_model_type: str, dataset_dir: str, input_text_name: str, out_dir: 
         print(f"The folder '{out_dir}' has been created.")
     
     device = torch.device('cuda:0')
+    clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
+    
     clip_model_type = clip_model_type.replace('/', '_')
     out_pkl_name = out_pkl_name.replace('.pkl', '')
     input_text_name = input_text_name.replace('.txt', '')
-    
     json_path = generate_json_file (clip_model_type, dataset_dir, input_text_name, out_dir, out_pkl_name)
     
     out_pkl_path = os.path.join(out_dir, f"{out_pkl_name}_{clip_model_type}.pkl")
-    clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
     with open(json_path, 'r') as f:
         data = json.load(f)
     print("%0d captions loaded from json " % len(data))
@@ -125,12 +125,12 @@ def main(clip_model_type: str, dataset_dir: str, input_text_name: str, out_dir: 
 if __name__ == '__main__':
     """
     Example: 
-    python parse_roco.py --clip_model_type "ViT-B/32" --dataset_dir "/mnt/eds_data/gitrepos/roco-dataset/data/validation/radiology" --input_text_name "captions.txt" --out_dir "./data/roco" --out_pkl_name "train"
+    python parse_roco.py --clip_model_type "ViT-B/32" --dataset_dir "/mnt/eds_data/gitrepos/roco-dataset/data/train/radiology" --input_text_name "captions.txt" --out_dir "./data/roco" --out_pkl_name "train"
     """
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--clip_model_type', default="ViT-B/32", choices=('RN50', 'RN101', 'RN50x4', 'ViT-B/32'))
-    parser.add_argument('--dataset_dir', default="/mnt/eds_data/gitrepos/roco-dataset/data/validation/radiology")
+    parser.add_argument('--dataset_dir', default="/mnt/eds_data/gitrepos/roco-dataset/data/train/radiology")
     parser.add_argument('--input_text_name', default="captions.txt") 
     parser.add_argument('--out_dir', default="./data/roco")
     parser.add_argument('--out_pkl_name', default="train") # No need to add .pkl

@@ -104,22 +104,21 @@ conda activate clip_prefix_caption
 
 ## ROCO training
 
-Download ROCO dataset from [here](https://github.com/razorx89/roco-dataset). 
+Download ROCO dataset from [here](https://github.com/razorx89/roco-dataset). The datest directory should have the following structure:
 ```
-    The datest directory should have the following structure:
-        dataset_dir/
-            ├── input_text_name.txt (E.g. captions.txt)
-            └── images/
-    In each "images" folder, filenames of images are: "ROCO_00020.jpg", "ROCO_00027.jpg", etc...
-    
-    In input_text_name.txt (E.g. captions.txt), the content is stored as below:
-    ROCO_00020	 Axial computed tomography scan of the pelvis showing a diffuse infiltration of the bladder wall, catheter in situ (arrow).
-    ROCO_00027	 Postoperative anteroposterior radiograph of the pelvis.
+dataset_dir/
+    ├── input_text_name.txt (E.g. captions.txt)
+    └── images/
+
+In each "images" folder, filenames of images are: "ROCO_00020.jpg", "ROCO_00027.jpg", etc...
+In input_text_name.txt (E.g. captions.txt), the content is stored as below:
+ROCO_00020	 Axial computed tomography scan of the pelvis showing a diffuse infiltration of the bladder wall, catheter in situ (arrow).
+ROCO_00027	 Postoperative anteroposterior radiograph of the pelvis.
 ```
 
 Extract CLIP features using:
 ```
-python parse_roco.py --clip_model_type "ViT-B/32" --dataset_dir "/mnt/eds_data/gitrepos/roco-dataset/data/validation/radiology" --input_text_name "captions.txt" --out_dir "./data/roco" --out_pkl_name "train"
+python parse_roco.py --clip_model_type "ViT-B/32" --dataset_dir "/mnt/eds_data/gitrepos/roco-dataset/data/train/radiology" --input_text_name "captions.txt" --out_dir "./data/roco" --out_pkl_name "train"
 
 ```
 Train with fine-tuning of GPT2:
