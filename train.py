@@ -371,7 +371,6 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
         # ======================== Evaluating ==============================
         if eval_dataset is not None:
             print(f">>> Evaluating epoch {epoch}")
-            print(f">>> Evaluating epoch {epoch}")
             eval_progress = tqdm(total=len(eval_dataloader), desc=output_prefix)
             total_eval_loss = 0
             model.eval()

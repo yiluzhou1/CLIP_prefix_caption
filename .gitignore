@@ -1,4 +1,4 @@
 data/roco
 roco_train
 __pycache__/
-output.txt
+*.txt
