@@ -301,8 +301,9 @@ def get_next_folder_path(base_folder):
             return next_folder
         i += 1
 
-def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
-          lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = ""):
+def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
+          lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = "",
+          eval_dataset: Optional[ClipCocoDataset] = None):
 
     device = torch.device('cuda:0')
     batch_size = args.bs
@@ -319,7 +320,9 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
 
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-    train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    if eval_dataset is not None:
+        eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader)
     )
@@ -327,36 +330,68 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     
     # create a SummaryWriter object
     writer = SummaryWriter(output_dir)
+    # Initialize global step counter
+    global_step = 0
     
     for epoch in range(epochs):
+        # ======================== Training ================================
         print(f">>> Training epoch {epoch}")
         sys.stdout.flush()
-        progress = tqdm(total=len(train_dataloader), desc=output_prefix)
+        train_progress = tqdm(total=len(train_dataloader), desc=output_prefix)
         for idx, (tokens, mask, prefix) in enumerate(train_dataloader):
             model.zero_grad()
             tokens, mask, prefix = tokens.to(device), mask.to(device), prefix.to(device, dtype=torch.float32)
             outputs = model(tokens, prefix, mask)
-            logits = outputs.logits[:, dataset.prefix_length - 1: -1]
-            loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
-            loss.backward()
+            logits = outputs.logits[:, train_dataset.prefix_length - 1: -1]
+            train_loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
+            train_loss.backward()
             optimizer.step()
             scheduler.step()
             optimizer.zero_grad()
-            progress.set_postfix({"loss": loss.item()})
-            progress.update()
+            train_progress.set_postfix({"train_loss": train_loss.item()})
+            train_progress.update()
             if (idx + 1) % 10000 == 0:
                 torch.save(
                     model.state_dict(),
                     os.path.join(output_dir, f"{output_prefix}_latest.pt"),
                 )
             # log the losses
-            writer.add_scalar('Loss/train', loss, epoch)
-        progress.close()
+            writer.add_scalar('train_loss', train_loss.item(), global_step)
+            # Increment the global step
+            global_step += 1
+
         if epoch % args.save_every == 0 or epoch == epochs - 1:
             torch.save(
                 model.state_dict(),
                 os.path.join(output_dir, f"{output_prefix}-{epoch:03d}.pt"),
             )
+
+        train_progress.close()
+
+        # ======================== Evaluating ==============================
+        if eval_dataset is not None:
+            print(f">>> Evaluating epoch {epoch}")
+            print(f">>> Evaluating epoch {epoch}")
+            eval_progress = tqdm(total=len(eval_dataloader), desc=output_prefix)
+            total_eval_loss = 0
+            model.eval()
+            with torch.no_grad():
+                for idx, (tokens, mask, prefix) in enumerate(eval_dataloader):
+                    tokens, mask, prefix = tokens.to(device), mask.to(device), prefix.to(device, dtype=torch.float32)
+                    outputs = model(tokens, prefix, mask)
+                    logits = outputs.logits[:, eval_dataset.prefix_length - 1: -1]
+                    eval_loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
+                    total_eval_loss += eval_loss.item()
+                    eval_progress.set_postfix({"eval_loss": eval_loss.item()})
+                    eval_progress.update()
+
+            # Calculate the average loss over all of the batches.
+            avg_eval_loss = total_eval_loss / len(eval_dataloader)
+            # Log the average eval loss after each epoch
+            writer.add_scalar('eval_loss', avg_eval_loss, epoch)
+
+            # Switch back to training mode
+            model.train()        
 
     # close the writer
     writer.close()
@@ -366,7 +401,8 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', default='./data/roco/ViT-B_32_train.pkl')
+    parser.add_argument('--train_data', default='./data/roco/train_ViT-B_32.pkl')
+    parser.add_argument('--eval_data', default='') #'./data/roco/eval_ViT-B_32.pkl'
     parser.add_argument('--out_dir', default='./checkpoints')
     parser.add_argument('--prefix', default='roco_prefix', help='prefix for saved filenames')
     parser.add_argument('--epochs', type=int, default=10)
@@ -383,7 +419,11 @@ def main():
     
     args = parser.parse_args()
     prefix_length = args.prefix_length
-    dataset = ClipCocoDataset(args.data, prefix_length, normalize_prefix=args.normalize_prefix)
+    train_dataset = ClipCocoDataset(args.train_data, prefix_length, normalize_prefix=args.normalize_prefix)
+    if args.eval_data != '':
+        eval_dataset = ClipCocoDataset(args.eval_data, prefix_length, normalize_prefix=args.normalize_prefix)
+    else:
+        eval_dataset = None
     prefix_dim = 640 if args.is_rn else 512
     args.mapping_type = {'mlp': MappingType.MLP, 'transformer': MappingType.Transformer}[args.mapping_type]
     if args.only_prefix:
@@ -395,7 +435,7 @@ def main():
                                   num_layers=args.num_layers, mapping_type=args.mapping_type)
         print("Train both prefix and GPT")
         sys.stdout.flush()
-    train(dataset, model, args, output_dir=args.out_dir, output_prefix=args.prefix)
+    train(train_dataset, model, args, output_dir=args.out_dir, output_prefix=args.prefix, eval_dataset=eval_dataset)
 
 
 if __name__ == '__main__':

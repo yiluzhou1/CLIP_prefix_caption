@@ -109,6 +109,8 @@ Download ROCO dataset from [here](https://github.com/razorx89/roco-dataset). The
 dataset_dir/
     ├── input_text_name.txt (E.g. captions.txt)
     └── images/
+          └── ROCO_00020.jpg
+          └── ROCO_00027.jpg
 
 In each "images" folder, filenames of images are: "ROCO_00020.jpg", "ROCO_00027.jpg", etc...
 In input_text_name.txt (E.g. captions.txt), the content is stored as below:
@@ -123,12 +125,12 @@ python parse_roco.py --clip_model_type "ViT-B/32" --dataset_dir "/mnt/eds_data/g
 ```
 Train with fine-tuning of GPT2:
 ```
-python train.py --data ./data/roco/ViT-B_32_train.pkl --out_dir "./roco_train/" --epochs 10 --bs 32 --pretrained_weights_path ""
+python train.py --train_data ./data/roco/ViT-B_32_train.pkl --out_dir "./roco_train/" --epochs 10 --bs 32 --pretrained_weights_path ""
 ```
 
 Train only transformer mapping network:
 ```
-python train.py --only_prefix --data ./data/roco/ViT-B_32_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 32 --pretrained_weights_path ""
+python train.py --only_prefix --train_data "./data/roco/train_ViT-B_32.pkl" --eval_data "./data/roco/validation_ViT-B_32.pkl" --out_dir "./roco_train/" --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 32 --pretrained_weights_path "roco_train/006/roco_prefix-019.pt"
 (background running)
 nohup python train.py > output.txt 2>&1 &
 ```
@@ -139,7 +141,7 @@ nohup python train.py > output.txt 2>&1 &
 python parse_roco.py --clip_model_type RN50x4
 ```
 ```
-python train.py --only_prefix --data ./data/roco/RN50x4_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --is_rn --epochs 10 --bs 32 --pretrained_weights_path ""
+python train.py --only_prefix --train_data ./data/roco/RN50x4_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --is_rn --epochs 10 --bs 32 --pretrained_weights_path ""
 ```
 
 ## Conceptual training
@@ -154,7 +156,7 @@ Notice, downloading the images might take a few days.
 
 Train with fine-tuning of GPT2:
 ```
-python train.py --data <data_root>/conceptual_clip_ViT-B_32_train.pkl --out_dir ./conceptual_train/
+python train.py --train_data <data_root>/conceptual_clip_ViT-B_32_train.pkl --out_dir ./conceptual_train/
 ```
 Similarly to the COCO training, you can train a transformer mapping network, and / or parse the images using a ResNet-based CLIP. 
 
