@@ -92,6 +92,7 @@ class MLP(nn.Module):
                 layers.append(act())
                 layers.append(nn.Dropout(dropout))  # adding dropout after activation
         self.model = nn.Sequential(*layers)
+        print(f'MLP __init__ dropout = {dropout}')
 
 
 class MlpTransformer(nn.Module):
@@ -102,6 +103,7 @@ class MlpTransformer(nn.Module):
         self.act = act
         self.fc2 = nn.Linear(h_dim, out_d)
         self.dropout = nn.Dropout(dropout)
+        print(f'MlpTransformer __init__ dropout = {dropout}')
 
     def forward(self, x):
         x = self.fc1(x)
@@ -109,6 +111,7 @@ class MlpTransformer(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)
         x = self.dropout(x)
+        print(f'MlpTransformer forward dropout = {self.dropout}')
         return x
 
 class MultiHeadAttention(nn.Module):
@@ -122,6 +125,7 @@ class MultiHeadAttention(nn.Module):
         self.to_keys_values = nn.Linear(dim_ref, dim_self * 2, bias=bias)
         self.project = nn.Linear(dim_self, dim_self)
         self.dropout = nn.Dropout(dropout)
+        print(f'MultiHeadAttention __init__ dropout = {dropout}')
 
     def forward(self, x, y=None, mask=None):
         y = y if y is not None else x
@@ -159,10 +163,12 @@ class TransformerLayer(nn.Module):
     def __init__(self, dim_self, dim_ref, num_heads, mlp_ratio=4., bias=False, dropout=0., act=nnf.relu,
                  norm_layer: nn.Module = nn.LayerNorm):
         super().__init__()
+        self.dropout = dropout
         self.norm1 = norm_layer(dim_self)
         self.attn = MultiHeadAttention(dim_self, dim_ref, num_heads, bias=bias, dropout=dropout)
         self.norm2 = norm_layer(dim_self)
         self.mlp = MlpTransformer(dim_self, int(dim_self * mlp_ratio), act=act, dropout=dropout)
+        print(f'TransformerLayer __init__ dropout = {dropout}')
 
 
 class Transformer(nn.Module):
@@ -184,22 +190,24 @@ class Transformer(nn.Module):
                 x = layer(x, y, mask)
         return x
 
-    def __init__(self, dim_self: int, num_heads: int, num_layers: int, dim_ref: Optional[int] = None,
+    def __init__(self, dim_self: int, num_heads: int, num_layers: int, dropout: float=0.,dim_ref: Optional[int] = None,
                  mlp_ratio: float = 2., act=nnf.relu, norm_layer: nn.Module = nn.LayerNorm, enc_dec: bool = False):
         super(Transformer, self).__init__()
         dim_ref = dim_ref if dim_ref is not None else dim_self
         self.enc_dec = enc_dec
+        self.dropout = dropout
         if enc_dec:
             num_layers = num_layers * 2
         layers = []
         for i in range(num_layers):
             if i % 2 == 0 and enc_dec:  # cross
-                layers.append(TransformerLayer(dim_self, dim_ref, num_heads, mlp_ratio, act=act, norm_layer=norm_layer))
+                layers.append(TransformerLayer(dim_self, dim_ref, num_heads, mlp_ratio, dropout=dropout, act=act, norm_layer=norm_layer))
             elif enc_dec:  # self
-                layers.append(TransformerLayer(dim_self, dim_self, num_heads, mlp_ratio, act=act, norm_layer=norm_layer))
+                layers.append(TransformerLayer(dim_self, dim_self, num_heads, mlp_ratio, dropout=dropout, act=act, norm_layer=norm_layer))
             else:  # self or cross
-                layers.append(TransformerLayer(dim_self, dim_ref, num_heads, mlp_ratio, act=act, norm_layer=norm_layer))
+                layers.append(TransformerLayer(dim_self, dim_ref, num_heads, mlp_ratio, dropout=dropout, act=act, norm_layer=norm_layer))
         self.layers = nn.ModuleList(layers)
+        print(f'Transformer __init__ dropout = {dropout}')
 
 
 class TransformerMapper(nn.Module):
@@ -211,12 +219,14 @@ class TransformerMapper(nn.Module):
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 
-    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8):
+    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, dropout: float=0.):
         super(TransformerMapper, self).__init__()
         self.clip_length = clip_length
-        self.transformer = Transformer(dim_embedding, 8, num_layers)
+        self.dropout = dropout
+        self.transformer = Transformer(dim_embedding, 8, num_layers, dropout)
         self.linear = nn.Linear(dim_clip, clip_length * dim_embedding)
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+        print(f'TransformerMapper __init__ dropout = {dropout}')
 
 
 class ClipCaptionModel(nn.Module):
@@ -236,17 +246,19 @@ class ClipCaptionModel(nn.Module):
         return out
 
     def __init__(self, prefix_length: int, clip_length: Optional[int] = None, prefix_size: int = 512,
-                 num_layers: int = 8, mapping_type: MappingType = MappingType.MLP):
+                 num_layers: int = 8, mapping_type: MappingType = MappingType.MLP, dropout: float=0.):
         super(ClipCaptionModel, self).__init__()
         self.prefix_length = prefix_length
+        self.dropout = dropout
         self.gpt = GPT2LMHeadModel.from_pretrained('gpt2')
         self.gpt_embedding_size = self.gpt.transformer.wte.weight.shape[1]
         if mapping_type == MappingType.MLP:
             self.clip_project = MLP((prefix_size, (self.gpt_embedding_size * prefix_length) // 2,
-                                     self.gpt_embedding_size * prefix_length))
+                                     self.gpt_embedding_size * prefix_length), dropout)
         else:
             self.clip_project = TransformerMapper(prefix_size, self.gpt_embedding_size, prefix_length,
-                                                                     clip_length, num_layers)
+                                                                     clip_length, num_layers, dropout)
+        print(f'ClipCaptionModel __init__ dropout = {dropout}')
 
 
 class ClipCaptionPrefix(ClipCaptionModel):
@@ -256,6 +268,7 @@ class ClipCaptionPrefix(ClipCaptionModel):
 
     def train(self, mode: bool = True):
         super(ClipCaptionPrefix, self).train(mode)
+        print(f'ClipCaptionPrefix __init__ dropout = {self.dropout}')
         self.gpt.eval()
         return self
 
@@ -447,6 +460,7 @@ def main():
     parser.add_argument('--is_rn', dest='is_rn', action='store_true')
     parser.add_argument('--normalize_prefix', dest='normalize_prefix', action='store_true')
     parser.add_argument('--pretrained_weights_path', type=str, default='')
+    parser.add_argument('--dropout', type=float, default=0., help='Dropout rate')
     
     args = parser.parse_args()
     prefix_length = args.prefix_length
@@ -459,11 +473,11 @@ def main():
     args.mapping_type = {'mlp': MappingType.MLP, 'transformer': MappingType.Transformer}[args.mapping_type]
     if args.only_prefix:
         model = ClipCaptionPrefix(prefix_length, clip_length=args.prefix_length_clip, prefix_size=prefix_dim,
-                                  num_layers=args.num_layers, mapping_type=args.mapping_type)
+                                  num_layers=args.num_layers, mapping_type=args.mapping_type, dropout=args.dropout)
         print("Train only prefix")
     else:
         model = ClipCaptionModel(prefix_length, clip_length=args.prefix_length_clip, prefix_size=prefix_dim,
-                                  num_layers=args.num_layers, mapping_type=args.mapping_type)
+                                  num_layers=args.num_layers, mapping_type=args.mapping_type, dropout=args.dropout)
         print("Train both prefix and GPT")
         sys.stdout.flush()
     train(train_dataset, model, args, output_dir=args.out_dir, output_prefix=args.prefix, eval_dataset=eval_dataset)
