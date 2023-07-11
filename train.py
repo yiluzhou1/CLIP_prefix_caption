@@ -305,15 +305,20 @@ def count_parameters(model):
     """
     Count the number of parameters 
     """
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    layer_count = 0
+    for name, module in model.named_modules():
+        layer_count += 1
+        print(f'Layer {layer_count}: {name} - {type(module)}')
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return layer_count, num_params
 
 def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
           lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = "",
           eval_dataset: Optional[ClipCocoDataset] = None):
     
     # Count model parameters
-    num_params = count_parameters(model)
-    print(f'There are {num_params} parameters in this {model.__class__.__name__} model.')
+    layer_count, num_params = count_parameters(model)
+    print(f'There are {layer_count} layers and {num_params} parameters in this {model.__class__.__name__} model.')
     
     device = torch.device('cuda:0')
     batch_size = args.bs
