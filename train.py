@@ -83,13 +83,14 @@ class MLP(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
-    def __init__(self, sizes: Tuple[int, ...], bias=True, act=nn.Tanh):
+    def __init__(self, sizes: Tuple[int, ...], bias=True, act=nn.Tanh, dropout=0.):
         super(MLP, self).__init__()
         layers = []
         for i in range(len(sizes) - 1):
             layers.append(nn.Linear(sizes[i], sizes[i + 1], bias=bias))
             if i < len(sizes) - 2:
                 layers.append(act())
+                layers.append(nn.Dropout(dropout))  # adding dropout after activation
         self.model = nn.Sequential(*layers)
 
 
@@ -324,6 +325,7 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     batch_size = args.bs
     epochs = args.epochs
     pretrained_weights_path = args.pretrained_weights_path
+    weight_decay = 0.01  # L2 regularization coefficient
     output_dir = get_next_folder_path(output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -349,7 +351,7 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
             print(f'The pretrained model {pretrained_weights_path} is partially loaded into this model successfully.')
 
     model.train()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     if eval_dataset is not None:
         eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
