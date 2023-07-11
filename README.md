@@ -138,10 +138,10 @@ nohup python train.py > output.txt 2>&1 &
 **If you wish to use ResNet-based CLIP:** 
 
 ```
-python parse_roco.py --clip_model_type RN50x4
+python parse_roco.py --clip_model_type "RN50x4" --dataset_dir "/mnt/eds_data/gitrepos/roco-dataset/data/train/radiology" --input_text_name "captions.txt" --out_dir "./data/roco" --out_pkl_name "train"
 ```
 ```
-python train.py --only_prefix --train_data ./data/roco/RN50x4_train.pkl --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --is_rn --epochs 10 --bs 32 --pretrained_weights_path ""
+python train.py --only_prefix --train_data "./data/roco/train_RN50x4.pkl" --eval_data "./data/roco/validation_RN50x4.pkl" --out_dir ./roco_train/ --mapping_type transformer  --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --is_rn --epochs 10 --bs 32 --pretrained_weights_path ""
 ```
 
 ## Conceptual training
