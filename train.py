@@ -301,10 +301,20 @@ def get_next_folder_path(base_folder):
             return next_folder
         i += 1
 
+def count_parameters(model):
+    """
+    Count the number of parameters 
+    """
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
           lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = "",
           eval_dataset: Optional[ClipCocoDataset] = None):
-
+    
+    # Count model parameters
+    num_params = count_parameters(model)
+    print(f'There are {num_params} parameters in this {model.__class__.__name__} model.')
+    
     device = torch.device('cuda:0')
     batch_size = args.bs
     epochs = args.epochs
@@ -316,7 +326,22 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
 
     if pretrained_weights_path != '':
         # Load the pretrained weights
-        model.load_state_dict(torch.load(pretrained_weights_path))
+        try:
+            model.load_state_dict(torch.load(pretrained_weights_path))
+            print(f'The pretrained model {pretrained_weights_path} matched this model perfectly.')
+        except:
+            print(f'It looks the pretrained model {pretrained_weights_path} is different with this model. Trying to partially load the parameters...')
+            # Load the state dict of the pre-trained model
+            pretrained_dict = torch.load(pretrained_weights_path)
+            # Get the state dict of the current model
+            model_dict = model.state_dict()
+            # Filter out unnecessary keys
+            filtered_pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+            # Update the current model's dict
+            model_dict.update(filtered_pretrained_dict)
+            # Set the model's state dict
+            model.load_state_dict(model_dict)
+            print(f'The pretrained model {pretrained_weights_path} is partially loaded into this model successfully.')
 
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
