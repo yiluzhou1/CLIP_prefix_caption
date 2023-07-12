@@ -92,7 +92,8 @@ class MLP(nn.Module):
                 layers.append(act())
                 layers.append(nn.Dropout(dropout))  # adding dropout after activation
         self.model = nn.Sequential(*layers)
-        print(f'MLP __init__ dropout = {dropout}')
+        if dropout != 0.:
+            print(f'MLP dropout = {dropout}')
 
 
 class MlpTransformer(nn.Module):
@@ -103,7 +104,8 @@ class MlpTransformer(nn.Module):
         self.act = act
         self.fc2 = nn.Linear(h_dim, out_d)
         self.dropout = nn.Dropout(dropout)
-        print(f'MlpTransformer __init__ dropout = {dropout}')
+        if dropout != 0.:
+            print(f'MlpTransformer dropout = {dropout}')
 
     def forward(self, x):
         x = self.fc1(x)
@@ -111,7 +113,6 @@ class MlpTransformer(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)
         x = self.dropout(x)
-        print(f'MlpTransformer forward dropout = {self.dropout}')
         return x
 
 class MultiHeadAttention(nn.Module):
@@ -125,7 +126,8 @@ class MultiHeadAttention(nn.Module):
         self.to_keys_values = nn.Linear(dim_ref, dim_self * 2, bias=bias)
         self.project = nn.Linear(dim_self, dim_self)
         self.dropout = nn.Dropout(dropout)
-        print(f'MultiHeadAttention __init__ dropout = {dropout}')
+        if dropout != 0.:
+            print(f'MultiHeadAttention dropout = {dropout}')
 
     def forward(self, x, y=None, mask=None):
         y = y if y is not None else x
@@ -143,6 +145,7 @@ class MultiHeadAttention(nn.Module):
             attention = attention.masked_fill(mask.unsqueeze(3), float("-inf"))
         attention = attention.softmax(dim=2)
         out = torch.einsum('bnmh,bmhd->bnhd', attention, values).reshape(b, n, c)
+        out = self.dropout(out)  # Apply dropout here
         out = self.project(out)
         return out, attention
 
@@ -163,12 +166,12 @@ class TransformerLayer(nn.Module):
     def __init__(self, dim_self, dim_ref, num_heads, mlp_ratio=4., bias=False, dropout=0., act=nnf.relu,
                  norm_layer: nn.Module = nn.LayerNorm):
         super().__init__()
-        self.dropout = dropout
         self.norm1 = norm_layer(dim_self)
         self.attn = MultiHeadAttention(dim_self, dim_ref, num_heads, bias=bias, dropout=dropout)
         self.norm2 = norm_layer(dim_self)
         self.mlp = MlpTransformer(dim_self, int(dim_self * mlp_ratio), act=act, dropout=dropout)
-        print(f'TransformerLayer __init__ dropout = {dropout}')
+        if dropout != 0.:
+            print(f'TransformerLayer dropout = {dropout}')
 
 
 class Transformer(nn.Module):
@@ -195,7 +198,6 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
         dim_ref = dim_ref if dim_ref is not None else dim_self
         self.enc_dec = enc_dec
-        self.dropout = dropout
         if enc_dec:
             num_layers = num_layers * 2
         layers = []
@@ -207,7 +209,8 @@ class Transformer(nn.Module):
             else:  # self or cross
                 layers.append(TransformerLayer(dim_self, dim_ref, num_heads, mlp_ratio, dropout=dropout, act=act, norm_layer=norm_layer))
         self.layers = nn.ModuleList(layers)
-        print(f'Transformer __init__ dropout = {dropout}')
+        if dropout != 0.:
+            print(f'Transformer dropout = {dropout}')
 
 
 class TransformerMapper(nn.Module):
@@ -222,11 +225,11 @@ class TransformerMapper(nn.Module):
     def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8, dropout: float=0.):
         super(TransformerMapper, self).__init__()
         self.clip_length = clip_length
-        self.dropout = dropout
         self.transformer = Transformer(dim_embedding, 8, num_layers, dropout)
         self.linear = nn.Linear(dim_clip, clip_length * dim_embedding)
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
-        print(f'TransformerMapper __init__ dropout = {dropout}')
+        if dropout != 0.:
+            print(f'TransformerMapper dropout = {dropout}')
 
 
 class ClipCaptionModel(nn.Module):
@@ -254,11 +257,12 @@ class ClipCaptionModel(nn.Module):
         self.gpt_embedding_size = self.gpt.transformer.wte.weight.shape[1]
         if mapping_type == MappingType.MLP:
             self.clip_project = MLP((prefix_size, (self.gpt_embedding_size * prefix_length) // 2,
-                                     self.gpt_embedding_size * prefix_length), dropout)
+                                     self.gpt_embedding_size * prefix_length), dropout=dropout)
         else:
             self.clip_project = TransformerMapper(prefix_size, self.gpt_embedding_size, prefix_length,
-                                                                     clip_length, num_layers, dropout)
-        print(f'ClipCaptionModel __init__ dropout = {dropout}')
+                                                                     clip_length, num_layers, dropout=dropout)
+        if dropout != 0.:
+            print(f'ClipCaptionModel dropout = {dropout}')
 
 
 class ClipCaptionPrefix(ClipCaptionModel):
@@ -268,7 +272,8 @@ class ClipCaptionPrefix(ClipCaptionModel):
 
     def train(self, mode: bool = True):
         super(ClipCaptionPrefix, self).train(mode)
-        print(f'ClipCaptionPrefix __init__ dropout = {self.dropout}')
+        if self.dropout != 0.:
+            print(f'ClipCaptionPrefix dropout = {self.dropout}')
         self.gpt.eval()
         return self
 
@@ -322,7 +327,7 @@ def count_parameters(model):
     layer_count = 0
     for name, module in model.named_modules():
         layer_count += 1
-        print(f'Layer {layer_count}: {name} - {type(module)}')
+        # print(f'Layer {layer_count}: {name} - {type(module)}')
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return layer_count, num_params
 
@@ -338,7 +343,7 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     batch_size = args.bs
     epochs = args.epochs
     pretrained_weights_path = args.pretrained_weights_path
-    weight_decay = 0.01  # L2 regularization coefficient
+    weight_decay = args.weight_decay  # L2 regularization coefficient
     output_dir = get_next_folder_path(output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -461,6 +466,7 @@ def main():
     parser.add_argument('--normalize_prefix', dest='normalize_prefix', action='store_true')
     parser.add_argument('--pretrained_weights_path', type=str, default='')
     parser.add_argument('--dropout', type=float, default=0., help='Dropout rate')
+    parser.add_argument('--weight_decay', type=float, default=0., help='weight_decay rate')
     
     args = parser.parse_args()
     prefix_length = args.prefix_length

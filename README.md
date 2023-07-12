@@ -125,14 +125,14 @@ python parse_roco.py --clip_model_type "ViT-B/32" --dataset_dir "/mnt/eds_data/g
 ```
 Train with fine-tuning of GPT2:
 ```
-python train.py --train_data "./data/roco/train_ViT-B_32.pkl" --eval_data "./data/roco/validation_ViT-B_32.pkl" --out_dir "./roco_train/" --mapping_type transformer --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 16 --pretrained_weights_path ""
+python train.py --train_data "./data/roco/train_ViT-B_32.pkl" --eval_data "./data/roco/validation_ViT-B_32.pkl" --out_dir "./roco_train/" --mapping_type transformer --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 24 --dropout 0.2 --weight_decay 0.02 --pretrained_weights_path "roco_train/011/roco_prefix-008.pt"
 ```
 
 Train only transformer mapping network:
 ```
-python train.py --only_prefix --train_data "./data/roco/train_ViT-B_32.pkl" --eval_data "./data/roco/validation_ViT-B_32.pkl" --out_dir "./roco_train/" --mapping_type transformer --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 32 --pretrained_weights_path "roco_train/006/roco_prefix-019.pt"
+python train.py --only_prefix --train_data "./data/roco/train_ViT-B_32.pkl" --eval_data "./data/roco/validation_ViT-B_32.pkl" --out_dir "./roco_train/" --mapping_type transformer --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 32 --dropout 0.2 --weight_decay 0.02 --pretrained_weights_path "roco_train/006/roco_prefix-019.pt"
 (background running)
-nohup python train.py > output.txt 2>&1 &
+nohup python train.py > "roco_train/output.txt" 2>&1 &
 ```
 
 **If you wish to use ResNet-based CLIP:** 
