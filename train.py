@@ -479,7 +479,7 @@ def main():
     # prefix_dim = 640 if args.is_rn else 512
     if args.clip_model_type.startswith('RN'):
         prefix_dim = 640
-    elif args.clip_model_type == 'ViT-L/14':
+    elif args.clip_model_type in ['ViT-L/14', 'ViT-L/14@336px']:
         prefix_dim = 768
     else:
         prefix_dim = 512
