@@ -477,8 +477,10 @@ def main():
     else:
         eval_dataset = None
     # prefix_dim = 640 if args.is_rn else 512
-    if args.clip_model_type.startswith('RN'):
+    if args.clip_model_type in ['RN50', 'RN50x4']:
         prefix_dim = 640
+    elif args.clip_model_type in ['RN50x64']:
+        prefix_dim = 1024
     elif args.clip_model_type in ['ViT-L/14', 'ViT-L/14@336px']:
         prefix_dim = 768
     else:
