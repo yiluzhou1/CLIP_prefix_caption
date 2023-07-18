@@ -129,7 +129,8 @@ if __name__ == '__main__':
     """
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--clip_model_type', default="ViT-B/32", choices=('RN50', 'RN101', 'RN50x4', 'ViT-B/32'))
+    parser.add_argument('--clip_model_type', default="ViT-B/32")
+    # choices=('RN50', 'RN101', 'RN50x4', 'RN50x16', 'RN50x64', 'ViT-B/32', 'ViT-B/16', 'ViT-L/14', 'ViT-L/14@336px')
     parser.add_argument('--dataset_dir', default="/mnt/eds_data/gitrepos/roco-dataset/data/train/radiology")
     parser.add_argument('--input_text_name', default="captions.txt") 
     parser.add_argument('--out_dir', default="./data/roco")

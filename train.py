@@ -469,7 +469,8 @@ def main():
     parser.add_argument('--only_prefix', dest='only_prefix', action='store_true')
     parser.add_argument('--mapping_type', type=str, default='mlp', help='mlp/transformer')
     parser.add_argument('--num_layers', type=int, default=8)
-    parser.add_argument('--is_rn', dest='is_rn', action='store_true')
+    # parser.add_argument('--is_rn', dest='is_rn', action='store_true')
+    parser.add_argument('--clip_model_type', default="ViT-B/32", choices=('RN50', 'RN101', 'RN50x4', 'RN50x16', 'RN50x64', 'ViT-B/32', 'ViT-B/16', 'ViT-L/14', 'ViT-L/14@336px'))
     parser.add_argument('--normalize_prefix', dest='normalize_prefix', action='store_true')
     parser.add_argument('--pretrained_weights_path', type=str, default='')
     parser.add_argument('--dropout', type=float, default=0., help='Dropout rate')
@@ -483,7 +484,16 @@ def main():
         eval_dataset = ClipCocoDataset(args.eval_data, prefix_length, normalize_prefix=args.normalize_prefix)
     else:
         eval_dataset = None
-    prefix_dim = 640 if args.is_rn else 512
+    # prefix_dim = 640 if args.is_rn else 512
+    if args.clip_model_type in ['RN50', 'RN50x4']:
+        prefix_dim = 640
+    elif args.clip_model_type in ['RN50x64']:
+        prefix_dim = 1024
+    elif args.clip_model_type in ['ViT-L/14', 'ViT-L/14@336px']:
+        prefix_dim = 768
+    else:
+        prefix_dim = 512
+
     args.mapping_type = {'mlp': MappingType.MLP, 'transformer': MappingType.Transformer}[args.mapping_type]
     if args.only_prefix:
         model = ClipCaptionPrefix(prefix_length, clip_length=args.prefix_length_clip, prefix_size=prefix_dim,
