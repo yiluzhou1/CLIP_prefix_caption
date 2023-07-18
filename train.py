@@ -344,6 +344,7 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     epochs = args.epochs
     pretrained_weights_path = args.pretrained_weights_path
     weight_decay = args.weight_decay  # L2 regularization coefficient
+    accumulation_steps = args.accumulation_steps
     output_dir = get_next_folder_path(output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -394,10 +395,16 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
             outputs = model(tokens, prefix, mask)
             logits = outputs.logits[:, train_dataset.prefix_length - 1: -1]
             train_loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
+            # normalize loss by gradient_accumulation_steps
+            train_loss = train_loss / accumulation_steps
             train_loss.backward()
-            optimizer.step()
-            scheduler.step()
-            optimizer.zero_grad()
+            
+            # Perform optimizer step and scheduler step only after every gradient_accumulation_steps
+            if ((idx + 1) % accumulation_steps == 0) or (idx + 1 == len(train_dataloader)):
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+
             train_progress.set_postfix({"train_loss": train_loss.item()})
             train_progress.update()
             if (idx + 1) % 10000 == 0:
@@ -467,6 +474,7 @@ def main():
     parser.add_argument('--pretrained_weights_path', type=str, default='')
     parser.add_argument('--dropout', type=float, default=0., help='Dropout rate')
     parser.add_argument('--weight_decay', type=float, default=0., help='weight_decay rate')
+    parser.add_argument('--accumulation_steps', type=int, default=1)
     
     args = parser.parse_args()
     prefix_length = args.prefix_length
