@@ -448,7 +448,8 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
             writer.add_scalar('eval_loss', avg_eval_loss, epoch)
 
             # Switch back to training mode
-            model.train()        
+            model.train()
+            eval_progress.close()
 
     # close the writer
     writer.close()
