@@ -332,7 +332,7 @@ def count_parameters(model):
     return layer_count, num_params
 
 def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
-          lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = "",
+          warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = "",
           eval_dataset: Optional[ClipCocoDataset] = None):
     
     # Count model parameters
@@ -345,6 +345,7 @@ def train(train_dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     pretrained_weights_path = args.pretrained_weights_path
     weight_decay = args.weight_decay  # L2 regularization coefficient
     accumulation_steps = args.accumulation_steps
+    lr = args.lr
     output_dir = get_next_folder_path(output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -476,6 +477,7 @@ def main():
     parser.add_argument('--dropout', type=float, default=0., help='Dropout rate')
     parser.add_argument('--weight_decay', type=float, default=0., help='weight_decay rate')
     parser.add_argument('--accumulation_steps', type=int, default=1)
+    parser.add_argument('--lr', type=float, default=2e-5, help='Learning rate')
     
     args = parser.parse_args()
     prefix_length = args.prefix_length

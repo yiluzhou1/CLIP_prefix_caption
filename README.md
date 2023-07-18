@@ -125,7 +125,7 @@ python parse_roco.py --clip_model_type "ViT-B/32" --dataset_dir "/mnt/eds_data/g
 ```
 Train with fine-tuning of GPT2:
 ```
-python train.py --train_data "./data/roco/train_ViT-B_32.pkl" --eval_data "./data/roco/validation_ViT-B_32.pkl" --clip_model_type "ViT-B/32" --out_dir "./roco_train/" --mapping_type transformer --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 24 --dropout 0.2 --weight_decay 0.02 --pretrained_weights_path "roco_train/011/roco_prefix-008.pt"
+python train.py --train_data "./data/roco/train_ViT-B_32.pkl" --eval_data "./data/roco/validation_ViT-B_32.pkl" --clip_model_type "ViT-B/32" --out_dir "./roco_train/" --mapping_type transformer --num_layers 8 --prefix_length 40 --prefix_length_clip 40 --epochs 10 --bs 24 --dropout 0.2 --weight_decay 0.02 --accumulation_steps 4 --lr 1e-6 --pretrained_weights_path "roco_train/011/roco_prefix-008.pt"
 ```
 
 Train only transformer mapping network:
