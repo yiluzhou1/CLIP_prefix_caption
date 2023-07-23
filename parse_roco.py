@@ -47,8 +47,8 @@ def generate_json_file (clip_model_type: str, dataset_dir: str, input_text_name:
                     caption = caption.encode('ascii').decode('ascii')
                 except:
                     continue
-                if len(caption) < 10: #Skip if the caption is too short
-                    continue
+                # if len(caption) < 10: #Skip if the caption is too short
+                #     continue
 
                 # Construct the path to the image file
                 image_path = os.path.join(image_dir, f'{image_id}.jpg')

@@ -2,3 +2,5 @@ data/roco
 roco_train
 __pycache__/
 *.txt
+Internal
+*_internal.ipynb
